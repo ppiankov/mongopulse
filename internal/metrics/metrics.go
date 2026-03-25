@@ -93,6 +93,18 @@ type Metrics struct {
 	ConnExhaustionHours *prometheus.GaugeVec
 	ConnUtilization     *prometheus.GaugeVec
 	ConnTrendPerHour    *prometheus.GaugeVec
+
+	// Sharding (WO-15).
+	ShardingChunks          *prometheus.GaugeVec
+	ShardingBalancerRunning *prometheus.GaugeVec
+	ShardingJumboChunks     *prometheus.GaugeVec
+	ShardingCollections     *prometheus.GaugeVec
+
+	// Balancer activity (WO-31).
+	BalancerMigrations        *prometheus.CounterVec
+	BalancerMigrationFailures *prometheus.CounterVec
+	BalancerSplits            *prometheus.CounterVec
+	ShardKeySkew              *prometheus.GaugeVec
 }
 
 func New(reg prometheus.Registerer) *Metrics {
@@ -184,6 +196,18 @@ func New(reg prometheus.Registerer) *Metrics {
 		ConnExhaustionHours: gauge("mongodb_conn_exhaustion_hours", "Estimated hours until connection exhaustion.", "node"),
 		ConnUtilization:     gauge("mongodb_conn_utilization_ratio", "Connection utilization ratio.", "node"),
 		ConnTrendPerHour:    gauge("mongodb_conn_trend_per_hour", "Connection trend per hour.", "node"),
+
+		// Sharding.
+		ShardingChunks:          gauge("mongodb_sharding_chunks", "Chunks per shard per namespace.", "node", "shard", "ns"),
+		ShardingBalancerRunning: gauge("mongodb_sharding_balancer_running", "Balancer is active (1=running).", "node"),
+		ShardingJumboChunks:     gauge("mongodb_sharding_jumbo_chunks", "Jumbo chunks count.", "node"),
+		ShardingCollections:     gauge("mongodb_sharding_collections", "Sharded collections count.", "node"),
+
+		// Balancer activity.
+		BalancerMigrations:        counter("mongodb_balancer_migrations_total", "Chunk migrations.", "node"),
+		BalancerMigrationFailures: counter("mongodb_balancer_migration_failures_total", "Failed migrations.", "node"),
+		BalancerSplits:            counter("mongodb_balancer_splits_total", "Chunk splits.", "node"),
+		ShardKeySkew:              gauge("mongodb_shard_key_skew_ratio", "Max/min chunk ratio per namespace.", "node", "ns"),
 	}
 
 	reg.MustRegister(
@@ -202,6 +226,8 @@ func New(reg prometheus.Registerer) *Metrics {
 		m.IndexOpsTotal, m.IndexSizeBytes, m.IndexUnused, m.IndexesTotal, m.IndexesUnusedTotal,
 		m.TopoPrimaryChanges, m.TopoRole, m.TopoElectionStorm, m.TopoLastElectionSecs,
 		m.ConnExhaustionHours, m.ConnUtilization, m.ConnTrendPerHour,
+		m.ShardingChunks, m.ShardingBalancerRunning, m.ShardingJumboChunks, m.ShardingCollections,
+		m.BalancerMigrations, m.BalancerMigrationFailures, m.BalancerSplits, m.ShardKeySkew,
 	)
 
 	return m

@@ -73,6 +73,10 @@ func (c *Collector) Collect(ctx context.Context) {
 	c.collectTopology(ctx)
 	c.collectConnPrediction(ctx, ss)
 
+	// Sharding (mongos only, no-op on mongod).
+	c.collectSharding(ctx)
+	c.collectBalancerActivity(ctx)
+
 	// Alert checks.
 	c.checkAlerts(ss)
 
