@@ -12,6 +12,7 @@ import (
 	"github.com/ppiankov/mongopulse/internal/collector"
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/metrics"
+	"github.com/ppiankov/mongopulse/internal/retry"
 )
 
 type Target struct {
@@ -32,16 +33,24 @@ func New(cfg config.Config, m *metrics.Metrics) *Engine {
 }
 
 func (e *Engine) Connect(ctx context.Context) error {
+	rc := retry.DefaultConfig()
 	for i, dsn := range e.cfg.DSN {
 		node := nodeLabel(dsn, i)
 
-		client, err := mongo.Connect(options.Client().ApplyURI(dsn))
+		var client *mongo.Client
+		err := retry.Do(ctx, rc, "connect-"+node, func(ctx context.Context) error {
+			c, err := mongo.Connect(options.Client().ApplyURI(dsn))
+			if err != nil {
+				return fmt.Errorf("connect: %w", err)
+			}
+			if err := c.Ping(ctx, nil); err != nil {
+				return fmt.Errorf("ping: %w", err)
+			}
+			client = c
+			return nil
+		})
 		if err != nil {
-			return fmt.Errorf("connect %s: %w", node, err)
-		}
-
-		if err := client.Ping(ctx, nil); err != nil {
-			return fmt.Errorf("ping %s: %w", node, err)
+			return fmt.Errorf("%s: %w", node, err)
 		}
 
 		t := &Target{
