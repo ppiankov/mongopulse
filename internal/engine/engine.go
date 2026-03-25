@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
+	"github.com/ppiankov/mongopulse/internal/alerter"
+	"github.com/ppiankov/mongopulse/internal/annotator"
 	"github.com/ppiankov/mongopulse/internal/collector"
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/metrics"
@@ -24,13 +26,15 @@ type Target struct {
 }
 
 type Engine struct {
-	targets []*Target
-	cfg     config.Config
-	metrics *metrics.Metrics
+	targets   []*Target
+	cfg       config.Config
+	metrics   *metrics.Metrics
+	alerter   *alerter.Alerter
+	annotator *annotator.Annotator
 }
 
-func New(cfg config.Config, m *metrics.Metrics) *Engine {
-	return &Engine{cfg: cfg, metrics: m}
+func New(cfg config.Config, m *metrics.Metrics, al *alerter.Alerter, an *annotator.Annotator) *Engine {
+	return &Engine{cfg: cfg, metrics: m, alerter: al, annotator: an}
 }
 
 func (e *Engine) Connect(ctx context.Context) error {
@@ -58,7 +62,7 @@ func (e *Engine) Connect(ctx context.Context) error {
 			DSN:       dsn,
 			Node:      node,
 			Client:    client,
-			Collector: collector.New(client, node, e.metrics, e.cfg),
+			Collector: collector.New(client, node, e.metrics, e.cfg, e.alerter, e.annotator),
 		}
 		e.targets = append(e.targets, t)
 		log.Printf("connected to %s", node)

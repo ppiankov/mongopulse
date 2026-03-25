@@ -13,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 
+	"github.com/ppiankov/mongopulse/internal/alerter"
+	"github.com/ppiankov/mongopulse/internal/annotator"
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/engine"
 	"github.com/ppiankov/mongopulse/internal/metrics"
@@ -40,7 +42,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	reg := prometheus.NewRegistry()
 	m := metrics.New(reg)
-	eng := engine.New(cfg, m)
+	al := alerter.New(cfg)
+	an := annotator.New(cfg.GrafanaURL, cfg.GrafanaToken, cfg.DashboardUID)
+	eng := engine.New(cfg, m, al, an)
 
 	if err := eng.Connect(ctx); err != nil {
 		return fmt.Errorf("engine: %w", err)
