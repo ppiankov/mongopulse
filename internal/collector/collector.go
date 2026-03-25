@@ -59,6 +59,12 @@ func (c *Collector) Collect(ctx context.Context) {
 	c.collectCollections(ctx)
 	c.collectDbStats(ctx)
 
+	// Differentiator collectors.
+	c.collectProfiler(ctx)
+	c.collectIndexUsage(ctx)
+	c.collectTopology(ctx)
+	c.collectConnPrediction(ctx, ss)
+
 	c.metrics.PollDuration.WithLabelValues(c.node).Set(time.Since(start).Seconds())
 }
 
