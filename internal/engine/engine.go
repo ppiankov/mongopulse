@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -99,7 +100,22 @@ func (e *Engine) poll(ctx context.Context) {
 }
 
 func nodeLabel(dsn string, index int) string {
-	// Extract host from mongodb://host:port/...
-	// Simple approach: use index-based label, overridden if parseable.
+	// Extract host:port from mongodb://user:pass@host:port/db?opts
+	// Strip scheme.
+	s := dsn
+	if i := strings.Index(s, "://"); i >= 0 {
+		s = s[i+3:]
+	}
+	// Strip credentials.
+	if i := strings.LastIndex(s, "@"); i >= 0 {
+		s = s[i+1:]
+	}
+	// Strip path and query.
+	if i := strings.IndexAny(s, "/?"); i >= 0 {
+		s = s[:i]
+	}
+	if s != "" {
+		return s
+	}
 	return fmt.Sprintf("node-%d", index)
 }
