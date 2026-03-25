@@ -31,31 +31,50 @@ func New(client *mongo.Client, node string, m *metrics.Metrics, cfg config.Confi
 func (c *Collector) Collect(ctx context.Context) {
 	start := time.Now()
 
-	if err := c.collectServerStatus(ctx); err != nil {
+	ss, err := c.collectServerStatus(ctx)
+	if err != nil {
 		log.Printf("[%s] serverStatus: %v", c.node, err)
 		c.metrics.Up.WithLabelValues(c.node).Set(0)
 		c.metrics.PollErrors.WithLabelValues(c.node).Inc()
 		return
 	}
 	c.metrics.Up.WithLabelValues(c.node).Set(1)
+
+	// Collectors that use serverStatus fields.
+	c.collectConnections(ctx, ss)
+	c.collectWiredTiger(ctx, ss)
+	c.collectOpcounters(ctx, ss)
+	c.collectCursors(ctx, ss)
+	c.collectLocks(ctx, ss)
+	c.collectNetwork(ctx, ss)
+
+	// Collectors that issue their own commands.
+	if err := c.collectReplication(ctx); err != nil {
+		log.Printf("[%s] replication: %v", c.node, err)
+	}
+	if err := c.collectCurrentOp(ctx); err != nil {
+		log.Printf("[%s] currentOp: %v", c.node, err)
+	}
+
+	c.collectCollections(ctx)
+	c.collectDbStats(ctx)
+
 	c.metrics.PollDuration.WithLabelValues(c.node).Set(time.Since(start).Seconds())
 }
 
-func (c *Collector) collectServerStatus(ctx context.Context) error {
+func (c *Collector) collectServerStatus(ctx context.Context) (map[string]interface{}, error) {
 	var result bson.M
 	err := c.client.Database("admin").RunCommand(ctx, bson.D{{Key: "serverStatus", Value: 1}}).Decode(&result)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if v, ok := result["version"].(string); ok {
 		c.metrics.Version.WithLabelValues(c.node, v).Set(1)
 	}
-	if v, ok := result["uptime"].(float64); ok {
+	if v, ok := toFloat64(result["uptime"]); ok {
 		c.metrics.Uptime.WithLabelValues(c.node).Set(v)
-	} else if v, ok := result["uptime"].(int32); ok {
-		c.metrics.Uptime.WithLabelValues(c.node).Set(float64(v))
 	}
 
-	return nil
+	return result, nil
 }
