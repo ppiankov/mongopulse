@@ -1,0 +1,20 @@
+[Unit]
+Description=mongopulse MongoDB metrics exporter
+Documentation=https://github.com/ppiankov/mongopulse
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+EnvironmentFile=/etc/mongopulse/mongopulse.env
+ExecStart=/usr/local/bin/mongopulse serve
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,49 @@
+{
+  "title": "mongopulse — Executive",
+  "uid": "mongopulse-exec",
+  "tags": ["mongodb", "mongopulse", "executive"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "title": "Health",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "mongodb_up", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}], "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}}
+    },
+    {
+      "title": "Capacity Headroom",
+      "type": "gauge",
+      "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+      "targets": [
+        {"expr": "1 - mongodb_conn_utilization_ratio", "legendFormat": "connections remaining"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "min": 0, "max": 1, "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.1}, {"color": "green", "value": 0.3}]}}}
+    },
+    {
+      "title": "Top Bottleneck",
+      "type": "stat",
+      "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "mongodb_longest_op_seconds", "legendFormat": "longest op (s)"},
+        {"expr": "max(mongodb_repl_lag_seconds)", "legendFormat": "max repl lag (s)"},
+        {"expr": "sum(mongodb_indexes_unused_total)", "legendFormat": "unused indexes"}
+      ],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 5}, {"color": "red", "value": 30}]}}}
+    },
+    {
+      "title": "Trend",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0},
+      "targets": [
+        {"expr": "rate(mongodb_query_regression_total[5m])", "legendFormat": "regressions/s"},
+        {"expr": "mongodb_conn_trend_per_hour", "legendFormat": "conn trend/hr"},
+        {"expr": "rate(mongodb_topology_primary_changes_total[1h])", "legendFormat": "elections/hr"}
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
