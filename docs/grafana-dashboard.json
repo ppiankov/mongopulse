@@ -1,0 +1,172 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "type": "datasource",
+      "pluginId": "prometheus"
+    }
+  ],
+  "title": "mongopulse",
+  "uid": "mongopulse",
+  "tags": ["mongodb", "mongopulse"],
+  "timezone": "browser",
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "title": "Targets Up",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "targets": [{"expr": "mongodb_up", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}}
+    },
+    {
+      "title": "Uptime",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "targets": [{"expr": "mongodb_uptime_seconds / 3600", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "h"}}
+    },
+    {
+      "title": "Version",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "targets": [{"expr": "mongodb_version_info", "legendFormat": "{{node}} {{version}}"}]
+    },
+    {
+      "title": "Connection Utilization",
+      "type": "gauge",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "targets": [{"expr": "mongodb_conn_utilization_ratio", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.9}]}}}
+    },
+    {
+      "title": "Cache Utilization",
+      "type": "gauge",
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "targets": [{"expr": "mongodb_wt_cache_bytes_used / mongodb_wt_cache_bytes_max", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 0.7}, {"color": "red", "value": 0.8}]}}}
+    },
+    {
+      "title": "Election Storm",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "targets": [{"expr": "mongodb_topology_election_storm", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "OK", "color": "green"}, "1": {"text": "STORM", "color": "red"}}}]}}
+    },
+    {
+      "title": "Connections",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [
+        {"expr": "mongodb_connections_current", "legendFormat": "current {{node}}"},
+        {"expr": "mongodb_connections_available", "legendFormat": "available {{node}}"}
+      ]
+    },
+    {
+      "title": "Connection Exhaustion Forecast",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [
+        {"expr": "mongodb_conn_exhaustion_hours > 0", "legendFormat": "hours to exhaustion {{node}}"},
+        {"expr": "mongodb_conn_trend_per_hour", "legendFormat": "trend/hr {{node}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "h"}}
+    },
+    {
+      "title": "Operations Rate",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "targets": [{"expr": "rate(mongodb_opcounters_total[5m])", "legendFormat": "{{type}} {{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "ops"}}
+    },
+    {
+      "title": "Active & Slow Operations",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "targets": [
+        {"expr": "mongodb_active_ops", "legendFormat": "active {{node}}"},
+        {"expr": "mongodb_slow_ops", "legendFormat": "slow {{node}}"},
+        {"expr": "mongodb_longest_op_seconds", "legendFormat": "longest op (s) {{node}}"}
+      ]
+    },
+    {
+      "title": "WiredTiger Cache",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "targets": [
+        {"expr": "mongodb_wt_cache_bytes_used", "legendFormat": "used {{node}}"},
+        {"expr": "mongodb_wt_cache_bytes_max", "legendFormat": "max {{node}}"},
+        {"expr": "mongodb_wt_cache_dirty_bytes", "legendFormat": "dirty {{node}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "bytes"}}
+    },
+    {
+      "title": "Replication Lag",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "targets": [{"expr": "mongodb_repl_lag_seconds", "legendFormat": "{{member}}"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "title": "Oplog Window",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 28},
+      "targets": [{"expr": "mongodb_repl_oplog_window_hours", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "h", "thresholds": {"steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 12}, {"color": "green", "value": 24}]}}}
+    },
+    {
+      "title": "Topology Role",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 28},
+      "targets": [{"expr": "mongodb_topology_role", "legendFormat": "{{node}}"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"1": {"text": "PRIMARY"}, "2": {"text": "SECONDARY"}, "3": {"text": "ARBITER"}}}]}}
+    },
+    {
+      "title": "Query Regressions",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+      "targets": [{"expr": "rate(mongodb_query_regression_total[5m])", "legendFormat": "{{fingerprint}} {{db}}"}]
+    },
+    {
+      "title": "Unused Indexes",
+      "type": "table",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+      "targets": [{"expr": "mongodb_index_unused == 1", "legendFormat": "", "format": "table", "instant": true}],
+      "transformations": [{"id": "organize", "options": {"excludeByName": {"Time": true, "__name__": true, "job": true, "instance": true}, "renameByName": {"db": "Database", "collection": "Collection", "index": "Index", "node": "Node"}}}]
+    },
+    {
+      "title": "Network Traffic",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 40},
+      "targets": [
+        {"expr": "rate(mongodb_network_bytes_in_total[5m])", "legendFormat": "in {{node}}"},
+        {"expr": "rate(mongodb_network_bytes_out_total[5m])", "legendFormat": "out {{node}}"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "Bps"}}
+    },
+    {
+      "title": "Database Sizes",
+      "type": "bargauge",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 40},
+      "targets": [{"expr": "mongodb_db_data_size_bytes", "legendFormat": "{{db}} {{node}}"}],
+      "fieldConfig": {"defaults": {"unit": "bytes"}}
+    },
+    {
+      "title": "Sharding — Chunks per Shard",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 48},
+      "targets": [{"expr": "mongodb_sharding_chunks", "legendFormat": "{{shard}} {{ns}}"}]
+    },
+    {
+      "title": "Shard Key Skew",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 48},
+      "targets": [{"expr": "mongodb_shard_key_skew_ratio", "legendFormat": "{{ns}}"}],
+      "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 2}, {"color": "red", "value": 5}]}}}
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}
