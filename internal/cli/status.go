@@ -13,12 +13,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/ppiankov/mongopulse/internal/config"
+	"github.com/ppiankov/mongopulse/internal/policy"
 	"github.com/ppiankov/mongopulse/internal/snapshot"
 )
 
 var (
 	statusFormat    string
 	statusUnhealthy bool
+	statusPolicy    string
 )
 
 var statusCmd = &cobra.Command{
@@ -30,6 +32,7 @@ var statusCmd = &cobra.Command{
 func init() {
 	statusCmd.Flags().StringVar(&statusFormat, "format", "text", "Output format: text or json")
 	statusCmd.Flags().BoolVar(&statusUnhealthy, "unhealthy", false, "Only show unhealthy nodes")
+	statusCmd.Flags().StringVar(&statusPolicy, "policy", "", "Path to policy YAML file for policy-as-code enforcement")
 	rootCmd.AddCommand(statusCmd)
 }
 
@@ -60,15 +63,42 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		snaps = append(snaps, snap)
 	}
 
+	var violations []policy.PolicyViolation
+	if statusPolicy != "" {
+		pol, err := policy.Load(statusPolicy)
+		if err != nil {
+			return fmt.Errorf("policy: %w", err)
+		}
+		for _, s := range snaps {
+			violations = append(violations, policy.Evaluate(pol, s)...)
+		}
+	}
+
 	switch statusFormat {
 	case "json":
+		type statusOutput struct {
+			Snapshots        []snapshot.Snapshot      `json:"snapshots"`
+			PolicyViolations []policy.PolicyViolation `json:"policy_violations,omitempty"`
+		}
+		out := statusOutput{Snapshots: snaps, PolicyViolations: violations}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(snaps)
+		return enc.Encode(out)
 	default:
 		for _, s := range snaps {
 			printSnapshot(s)
 		}
+		if len(violations) > 0 {
+			fmt.Println("Policy violations:")
+			for _, v := range violations {
+				fmt.Printf("  [%s] %s: actual=%s threshold=%s\n", v.Severity, v.Rule, v.Actual, v.Threshold)
+			}
+		}
+	}
+
+	if len(violations) > 0 {
+		exitCode = 6
+		return nil
 	}
 
 	// Exit codes: 0=healthy, 1=degraded, 2=critical.

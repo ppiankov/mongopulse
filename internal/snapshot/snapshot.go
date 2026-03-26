@@ -17,17 +17,19 @@ const (
 )
 
 type Snapshot struct {
-	Timestamp   string          `json:"timestamp"`
-	Node        string          `json:"node"`
-	Status      Status          `json:"status"`
-	Version     string          `json:"version,omitempty"`
-	Uptime      float64         `json:"uptime_seconds,omitempty"`
-	Connections ConnectionsSnap `json:"connections"`
-	ReplSet     *ReplSetSnap    `json:"repl_set,omitempty"`
-	WiredTiger  WTSnap          `json:"wired_tiger"`
-	Ops         OpsSnap         `json:"opcounters"`
-	ActiveOps   int             `json:"active_ops"`
-	SlowOps     int             `json:"slow_ops"`
+	Timestamp        string          `json:"timestamp"`
+	Node             string          `json:"node"`
+	Status           Status          `json:"status"`
+	Version          string          `json:"version,omitempty"`
+	Uptime           float64         `json:"uptime_seconds,omitempty"`
+	Connections      ConnectionsSnap `json:"connections"`
+	ReplSet          *ReplSetSnap    `json:"repl_set,omitempty"`
+	WiredTiger       WTSnap          `json:"wired_tiger"`
+	Ops              OpsSnap         `json:"opcounters"`
+	ActiveOps        int             `json:"active_ops"`
+	SlowOps          int             `json:"slow_ops"`
+	UnusedIndexes    int             `json:"unused_indexes,omitempty"`
+	OplogWindowHours float64         `json:"oplog_window_hours,omitempty"`
 }
 
 type ConnectionsSnap struct {

@@ -6,9 +6,14 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/ppiankov/mongopulse/internal/policy"
 )
 
-var initFormat string
+var (
+	initFormat     string
+	initWithPolicy bool
+)
 
 var initCmd = &cobra.Command{
 	Use:   "init",
@@ -18,6 +23,7 @@ var initCmd = &cobra.Command{
 
 func init() {
 	initCmd.Flags().StringVar(&initFormat, "format", "env", "Output format: env or json")
+	initCmd.Flags().BoolVar(&initWithPolicy, "with-policy", false, "Also print a sample .mongopulse-policy.yaml")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -49,7 +55,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 	case "json":
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(vars)
+		if err := enc.Encode(vars); err != nil {
+			return fmt.Errorf("encode json: %w", err)
+		}
 	case "env":
 		for _, v := range vars {
 			req := ""
@@ -59,8 +67,14 @@ func runInit(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stdout, "# %s%s\n", v.Description, req)
 			fmt.Fprintf(os.Stdout, "%s=%s\n\n", v.Name, v.Default)
 		}
-		return nil
 	default:
 		return fmt.Errorf("unknown format %q: use env or json", initFormat)
 	}
+
+	if initWithPolicy {
+		fmt.Fprintln(os.Stdout, "# --- .mongopulse-policy.yaml ---")
+		fmt.Fprint(os.Stdout, policy.SampleYAML())
+	}
+
+	return nil
 }
