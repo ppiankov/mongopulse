@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Set version
+        id: version
+        run: echo "VERSION_NUM=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build binaries
+        run: |
+          LDFLAGS="-s -w -X github.com/ppiankov/mongopulse/internal/cli.version=${{ steps.version.outputs.VERSION_NUM }}"
+          GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/mongopulse-linux-amd64 ./cmd/mongopulse
+          GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/mongopulse-linux-arm64 ./cmd/mongopulse
+          GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/mongopulse-darwin-amd64 ./cmd/mongopulse
+          GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/mongopulse-darwin-arm64 ./cmd/mongopulse
+
+      - name: Create archives
+        run: |
+          cd dist
+          for bin in mongopulse-*; do
+            tar czf "${bin}.tar.gz" "$bin"
+          done
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION_NUM }}"
+          sed -n "/^## \[${VERSION}\]/,/^## \[/p" CHANGELOG.md | head -n -1 > /tmp/release-notes.md
+          if [ ! -s /tmp/release-notes.md ]; then
+            echo "Release ${VERSION}" > /tmp/release-notes.md
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: /tmp/release-notes.md
+          files: dist/*.tar.gz
+
+      - name: Build and push Docker image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker build --build-arg VERSION=${{ steps.version.outputs.VERSION_NUM }} -t ghcr.io/ppiankov/mongopulse:${{ steps.version.outputs.VERSION_NUM }} .
+          docker tag ghcr.io/ppiankov/mongopulse:${{ steps.version.outputs.VERSION_NUM }} ghcr.io/ppiankov/mongopulse:latest
+          docker push ghcr.io/ppiankov/mongopulse:${{ steps.version.outputs.VERSION_NUM }}
+          docker push ghcr.io/ppiankov/mongopulse:latest
+
+      - name: Update Homebrew tap
+        if: success()
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION_NUM }}"
+          DARWIN_AMD64_SHA=$(sha256sum dist/mongopulse-darwin-amd64.tar.gz | cut -d' ' -f1)
+          DARWIN_ARM64_SHA=$(sha256sum dist/mongopulse-darwin-arm64.tar.gz | cut -d' ' -f1)
+          LINUX_AMD64_SHA=$(sha256sum dist/mongopulse-linux-amd64.tar.gz | cut -d' ' -f1)
+          LINUX_ARM64_SHA=$(sha256sum dist/mongopulse-linux-arm64.tar.gz | cut -d' ' -f1)
+
+          cat > /tmp/mongopulse.rb <<FORMULA
+          class Mongopulse < Formula
+            desc "MongoDB heartbeat monitor and Prometheus metrics exporter"
+            homepage "https://github.com/ppiankov/mongopulse"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/ppiankov/mongopulse/releases/download/v${VERSION}/mongopulse-darwin-arm64.tar.gz"
+                sha256 "${DARWIN_ARM64_SHA}"
+              else
+                url "https://github.com/ppiankov/mongopulse/releases/download/v${VERSION}/mongopulse-darwin-amd64.tar.gz"
+                sha256 "${DARWIN_AMD64_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/ppiankov/mongopulse/releases/download/v${VERSION}/mongopulse-linux-arm64.tar.gz"
+                sha256 "${LINUX_ARM64_SHA}"
+              else
+                url "https://github.com/ppiankov/mongopulse/releases/download/v${VERSION}/mongopulse-linux-amd64.tar.gz"
+                sha256 "${LINUX_AMD64_SHA}"
+              end
+            end
+
+            def install
+              bin.install Dir["mongopulse-*"].first => "mongopulse"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/mongopulse version")
+            end
+          end
+          FORMULA
+
+          cd /tmp
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/ppiankov/homebrew-tap.git"
+          cp mongopulse.rb homebrew-tap/Formula/mongopulse.rb
+          cd homebrew-tap
+          git add Formula/mongopulse.rb
+          git commit -m "mongopulse ${VERSION}"
+          git push
