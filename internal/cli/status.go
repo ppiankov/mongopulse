@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -12,15 +14,19 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ppiankov/mongopulse/internal/baseline"
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/policy"
 	"github.com/ppiankov/mongopulse/internal/snapshot"
 )
 
 var (
-	statusFormat    string
-	statusUnhealthy bool
-	statusPolicy    string
+	statusFormat         string
+	statusUnhealthy      bool
+	statusPolicy         string
+	statusBaseline       string
+	statusBaselineCreate bool
+	statusExpires        string
 )
 
 var statusCmd = &cobra.Command{
@@ -33,6 +39,9 @@ func init() {
 	statusCmd.Flags().StringVar(&statusFormat, "format", "text", "Output format: text or json")
 	statusCmd.Flags().BoolVar(&statusUnhealthy, "unhealthy", false, "Only show unhealthy nodes")
 	statusCmd.Flags().StringVar(&statusPolicy, "policy", "", "Path to policy YAML file for policy-as-code enforcement")
+	statusCmd.Flags().StringVar(&statusBaseline, "baseline", "", "Path to baseline JSON file for suppressing known conditions")
+	statusCmd.Flags().BoolVar(&statusBaselineCreate, "baseline-create", false, "Save current conditions as a baseline file (requires --baseline)")
+	statusCmd.Flags().StringVar(&statusExpires, "expires", "", "Expiry duration for baseline entries (e.g. 90d, 24h)")
 	rootCmd.AddCommand(statusCmd)
 }
 
@@ -72,6 +81,27 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		for _, s := range snaps {
 			violations = append(violations, policy.Evaluate(pol, s)...)
 		}
+	}
+
+	if statusBaselineCreate && statusBaseline != "" {
+		expires, err := parseDuration(statusExpires)
+		if err != nil {
+			return fmt.Errorf("expires: %w", err)
+		}
+		b := baseline.FromViolations(violations, expires)
+		if err := baseline.Save(statusBaseline, b); err != nil {
+			return fmt.Errorf("baseline save: %w", err)
+		}
+		fmt.Printf("Baseline saved to %s (%d conditions)\n", statusBaseline, len(b.Entries))
+		return nil
+	}
+
+	if statusBaseline != "" {
+		b, err := baseline.Load(statusBaseline)
+		if err != nil {
+			return fmt.Errorf("baseline: %w", err)
+		}
+		violations = baseline.FilterViolations(violations, b)
 	}
 
 	switch statusFormat {
@@ -114,6 +144,32 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func parseDuration(s string) (time.Duration, error) {
+	if s == "" {
+		return 0, nil
+	}
+
+	if strings.HasSuffix(s, "d") {
+		days, err := strconv.Atoi(strings.TrimSuffix(s, "d"))
+		if err != nil {
+			return 0, fmt.Errorf("invalid day duration %q: %w", s, err)
+		}
+		if days <= 0 {
+			return 0, fmt.Errorf("duration must be positive, got %q", s)
+		}
+		return time.Duration(days) * 24 * time.Hour, nil
+	}
+
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q: %w", s, err)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("duration must be positive, got %q", s)
+	}
+	return d, nil
 }
 
 func printSnapshot(s snapshot.Snapshot) {
