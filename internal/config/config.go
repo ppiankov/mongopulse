@@ -2,11 +2,48 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
+
+// MaskDSN redacts the password portion of mongodb:// URIs.
+func MaskDSN(dsn string) string {
+	if dsn == "" {
+		return ""
+	}
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return dsn
+	}
+	if u.User == nil {
+		return dsn
+	}
+	if _, hasPass := u.User.Password(); !hasPass {
+		return dsn
+	}
+	// Rebuild manually to avoid URL-encoding the mask characters.
+	var b strings.Builder
+	b.WriteString(u.Scheme)
+	b.WriteString("://")
+	b.WriteString(u.User.Username())
+	b.WriteString(":REDACTED@")
+	b.WriteString(u.Host)
+	if u.Path != "" {
+		b.WriteString(u.Path)
+	}
+	if u.RawQuery != "" {
+		b.WriteByte('?')
+		b.WriteString(u.RawQuery)
+	}
+	if u.Fragment != "" {
+		b.WriteByte('#')
+		b.WriteString(u.Fragment)
+	}
+	return b.String()
+}
 
 type Config struct {
 	// Required: comma-separated for multi-target.

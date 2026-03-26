@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
 	"sort"
 	"sync"
@@ -112,7 +112,7 @@ func (c *Collector) collectProfiler(ctx context.Context) {
 			}
 			if qs.baseline > 0 && mean > qs.baseline*c.cfg.RegressionThreshold {
 				c.metrics.QueryRegressionTotal.WithLabelValues(c.node, dbName, fp).Inc()
-				log.Printf("[%s] query regression: %s mean=%.1fms baseline=%.1fms", c.node, fp[:12], mean, qs.baseline)
+				slog.Warn("query regression detected", "node", c.node, "fingerprint", fp[:12], "mean_ms", mean, "baseline_ms", qs.baseline)
 			}
 			profilerStateMu.Unlock()
 

@@ -2,7 +2,7 @@ package collector
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -70,7 +70,7 @@ func (c *Collector) collectTopology(ctx context.Context) {
 		c.metrics.TopoPrimaryChanges.WithLabelValues(c.node, set).Inc()
 		ts.lastElection = now
 		ts.elections = append(ts.elections, now)
-		log.Printf("[%s] primary changed: %s -> %s", c.node, ts.lastPrimary, currentPrimary)
+		slog.Warn("primary changed", "node", c.node, "from", ts.lastPrimary, "to", currentPrimary)
 	}
 	ts.lastPrimary = currentPrimary
 
@@ -91,7 +91,7 @@ func (c *Collector) collectTopology(ctx context.Context) {
 
 	if len(recent) > 3 {
 		c.metrics.TopoElectionStorm.WithLabelValues(c.node, set).Set(1)
-		log.Printf("[%s] election storm: %d elections in 10min", c.node, len(recent))
+		slog.Error("election storm detected", "node", c.node, "elections_in_10min", len(recent))
 	} else {
 		c.metrics.TopoElectionStorm.WithLabelValues(c.node, set).Set(0)
 	}

@@ -2,7 +2,7 @@ package collector
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -37,7 +37,7 @@ func (c *Collector) collectIndexStatsForColl(ctx context.Context, db *mongo.Data
 
 	cursor, err := db.Collection(collName).Aggregate(ctx, pipeline)
 	if err != nil {
-		log.Printf("[%s] indexStats %s.%s: %v", c.node, dbName, collName, err)
+		slog.Warn("indexStats failed", "node", c.node, "db", dbName, "collection", collName, "error", err)
 		return
 	}
 	defer cursor.Close(ctx)

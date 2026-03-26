@@ -3,7 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -65,7 +65,7 @@ func (e *Engine) Connect(ctx context.Context) error {
 			Collector: collector.New(client, node, e.metrics, e.cfg, e.alerter, e.annotator),
 		}
 		e.targets = append(e.targets, t)
-		log.Printf("connected to %s", node)
+		slog.Info("connected", "node", node)
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func (e *Engine) Run(ctx context.Context) {
 func (e *Engine) Close(ctx context.Context) {
 	for _, t := range e.targets {
 		if err := t.Client.Disconnect(ctx); err != nil {
-			log.Printf("disconnect %s: %v", t.Node, err)
+			slog.Error("disconnect failed", "node", t.Node, "error", err)
 		}
 	}
 }

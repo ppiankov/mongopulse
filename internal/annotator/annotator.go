@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 )
@@ -52,7 +52,7 @@ func (a *Annotator) Annotate(text string, tags ...string) {
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(body))
 	if err != nil {
-		log.Printf("[annotator] create request: %v", err)
+		slog.Error("annotator request creation failed", "error", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -60,7 +60,7 @@ func (a *Annotator) Annotate(text string, tags ...string) {
 
 	resp, err := a.client.Do(req)
 	if err != nil {
-		log.Printf("[annotator] post: %v", err)
+		slog.Error("annotator post failed", "error", err)
 		return
 	}
 	resp.Body.Close()

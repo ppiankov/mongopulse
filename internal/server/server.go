@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -33,7 +33,7 @@ func New(port int, reg *prometheus.Registry, eng *engine.Engine) *Server {
 }
 
 func (s *Server) ListenAndServe() error {
-	log.Printf("serving metrics on %s/metrics", s.srv.Addr)
+	slog.Info("serving metrics", "addr", s.srv.Addr, "path", "/metrics")
 	return s.srv.ListenAndServe()
 }
 

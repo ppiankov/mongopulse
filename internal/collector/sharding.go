@@ -2,7 +2,7 @@ package collector
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -42,7 +42,7 @@ func (c *Collector) collectSharding(ctx context.Context) {
 	}
 	cursor, err := c.client.Database("config").Collection("chunks").Aggregate(ctx, pipeline)
 	if err != nil {
-		log.Printf("[%s] sharding chunks: %v", c.node, err)
+		slog.Warn("sharding chunks aggregation failed", "node", c.node, "error", err)
 		return
 	}
 	defer cursor.Close(ctx)

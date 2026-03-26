@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -39,6 +39,6 @@ func runMCP(cmd *cobra.Command, args []string) error {
 	defer cancel()
 	defer srv.Close(ctx)
 
-	log.Println("MCP server started on stdio")
+	slog.Info("MCP server started", "transport", "stdio")
 	return srv.Run(ctx)
 }

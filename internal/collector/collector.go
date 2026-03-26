@@ -3,7 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"time"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -40,7 +40,7 @@ func (c *Collector) Collect(ctx context.Context) {
 
 	ss, err := c.collectServerStatus(ctx)
 	if err != nil {
-		log.Printf("[%s] serverStatus: %v", c.node, err)
+		slog.Error("serverStatus failed", "node", c.node, "error", err)
 		c.metrics.Up.WithLabelValues(c.node).Set(0)
 		c.metrics.PollErrors.WithLabelValues(c.node).Inc()
 		c.fireAlert(alerter.AlertNodeDown, fmt.Sprintf("serverStatus failed: %v", err))
@@ -58,10 +58,10 @@ func (c *Collector) Collect(ctx context.Context) {
 
 	// Collectors that issue their own commands.
 	if err := c.collectReplication(ctx); err != nil {
-		log.Printf("[%s] replication: %v", c.node, err)
+		slog.Warn("replication collection failed", "node", c.node, "error", err)
 	}
 	if err := c.collectCurrentOp(ctx); err != nil {
-		log.Printf("[%s] currentOp: %v", c.node, err)
+		slog.Warn("currentOp collection failed", "node", c.node, "error", err)
 	}
 
 	c.collectCollections(ctx)

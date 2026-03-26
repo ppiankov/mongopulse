@@ -2,7 +2,7 @@ package retry
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"math"
 	"time"
 )
@@ -31,7 +31,7 @@ func Do(ctx context.Context, cfg Config, label string, fn func(ctx context.Conte
 		lastErr = fn(ctx)
 		if lastErr == nil {
 			if attempt > 0 {
-				log.Printf("[retry] %s: succeeded after %d retries", label, attempt)
+				slog.Info("retry succeeded", "label", label, "attempts", attempt)
 			}
 			return nil
 		}
@@ -41,7 +41,7 @@ func Do(ctx context.Context, cfg Config, label string, fn func(ctx context.Conte
 		}
 
 		delay := backoff(attempt, cfg.BaseDelay, cfg.MaxDelay)
-		log.Printf("[retry] %s: attempt %d failed (%v), retrying in %s", label, attempt+1, lastErr, delay)
+		slog.Warn("retry attempt failed", "label", label, "attempt", attempt+1, "error", lastErr, "retry_in", delay)
 
 		select {
 		case <-ctx.Done():

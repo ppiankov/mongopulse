@@ -2,7 +2,7 @@ package collector
 
 import (
 	"context"
-	"log"
+	"log/slog"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
@@ -10,7 +10,7 @@ import (
 func (c *Collector) collectDbStats(ctx context.Context) {
 	dbs, err := c.client.ListDatabaseNames(ctx, bson.D{})
 	if err != nil {
-		log.Printf("[%s] listDatabases: %v", c.node, err)
+		slog.Warn("listDatabases failed", "node", c.node, "error", err)
 		return
 	}
 

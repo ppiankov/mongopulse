@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
@@ -97,7 +97,7 @@ func (a *Alerter) sendTelegram(alert Alert) {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", a.telegramToken)
 	resp, err := a.client.Post(url, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Printf("[alerter] telegram: %v", err)
+		slog.Error("telegram alert failed", "error", err)
 		return
 	}
 	resp.Body.Close()
@@ -107,7 +107,7 @@ func (a *Alerter) sendWebhook(alert Alert) {
 	body, _ := json.Marshal(alert)
 	resp, err := a.client.Post(a.webhookURL, "application/json", bytes.NewReader(body))
 	if err != nil {
-		log.Printf("[alerter] webhook: %v", err)
+		slog.Error("webhook alert failed", "error", err)
 		return
 	}
 	resp.Body.Close()

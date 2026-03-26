@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -98,7 +98,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 		resp := s.handle(ctx, req)
 		if err := encoder.Encode(resp); err != nil {
-			log.Printf("encode: %v", err)
+			slog.Error("encode response failed", "error", err)
 		}
 	}
 }
@@ -366,11 +366,11 @@ func (s *Server) mcpWho(ctx context.Context, args json.RawMessage) (interface{},
 		clientMap[key].Count++
 	}
 
-	var result []clientEntry
+	var resultList []clientEntry
 	for _, c := range clientMap {
-		result = append(result, *c)
+		resultList = append(resultList, *c)
 	}
-	return result, nil
+	return resultList, nil
 }
 
 func (s *Server) mcpSlow(ctx context.Context, args json.RawMessage) (interface{}, error) {

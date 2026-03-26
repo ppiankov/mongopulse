@@ -3,7 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,7 +24,15 @@ import (
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the metrics exporter",
-	RunE:  runServe,
+	PreRun: func(cmd *cobra.Command, args []string) {
+		level := slog.LevelInfo
+		if verbose {
+			level = slog.LevelDebug
+		}
+		handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: level})
+		slog.SetDefault(slog.New(handler))
+	},
+	RunE: runServe,
 }
 
 func init() {
@@ -59,7 +67,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	go func() {
 		<-ctx.Done()
-		log.Println("shutting down...")
+		slog.Info("shutting down")
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 		srv.Shutdown(shutdownCtx)
