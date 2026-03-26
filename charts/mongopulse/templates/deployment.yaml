@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mongopulse.fullname" . }}
+  labels:
+    {{- include "mongopulse.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "mongopulse.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mongopulse.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: mongopulse
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["serve"]
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.metricsPort }}
+              protocol: TCP
+          env:
+            - name: METRICS_PORT
+              value: {{ .Values.metricsPort | quote }}
+            - name: POLL_INTERVAL
+              value: {{ .Values.pollInterval | quote }}
+            - name: SLOW_QUERY_THRESHOLD
+              value: {{ .Values.slowQueryThreshold | quote }}
+            - name: REGRESSION_THRESHOLD
+              value: {{ .Values.regressionThreshold | quote }}
+            - name: STMT_LIMIT
+              value: {{ .Values.stmtLimit | quote }}
+            {{- if .Values.existingSecret }}
+            - name: MONGO_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.existingSecret }}
+                  key: MONGO_DSN
+            {{- else }}
+            - name: MONGO_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongopulse.fullname" . }}
+                  key: MONGO_DSN
+            {{- end }}
+            {{- if .Values.alerting.telegramBotToken }}
+            - name: TELEGRAM_BOT_TOKEN
+              value: {{ .Values.alerting.telegramBotToken | quote }}
+            - name: TELEGRAM_CHAT_ID
+              value: {{ .Values.alerting.telegramChatID | quote }}
+            {{- end }}
+            {{- if .Values.alerting.webhookURL }}
+            - name: ALERT_WEBHOOK_URL
+              value: {{ .Values.alerting.webhookURL | quote }}
+            {{- end }}
+            {{- if .Values.alerting.cooldown }}
+            - name: ALERT_COOLDOWN
+              value: {{ .Values.alerting.cooldown | quote }}
+            {{- end }}
+            {{- if .Values.grafana.url }}
+            - name: GRAFANA_URL
+              value: {{ .Values.grafana.url | quote }}
+            - name: GRAFANA_TOKEN
+              value: {{ .Values.grafana.token | quote }}
+            - name: GRAFANA_DASHBOARD_UID
+              value: {{ .Values.grafana.dashboardUID | quote }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

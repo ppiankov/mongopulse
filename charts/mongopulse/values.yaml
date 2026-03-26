@@ -1,0 +1,95 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/ppiankov/mongopulse
+  tag: ""
+  pullPolicy: IfNotPresent
+
+mongoDSN: ""
+
+metricsPort: 9216
+pollInterval: "5s"
+slowQueryThreshold: "5s"
+regressionThreshold: "2.0"
+stmtLimit: "50"
+
+alerting:
+  telegramBotToken: ""
+  telegramChatID: ""
+  webhookURL: ""
+  cooldown: "5m"
+
+grafana:
+  url: ""
+  token: ""
+  dashboardUID: ""
+
+existingSecret: ""
+
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  labels: {}
+
+prometheusRule:
+  enabled: false
+  rules:
+    - alert: MongoDBDown
+      expr: mongodb_up == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "MongoDB target {{ $labels.node }} is down"
+    - alert: MongoDBConnectionSaturation
+      expr: mongodb_conn_utilization_ratio > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "MongoDB {{ $labels.node }} connection utilization > 90%"
+    - alert: MongoDBCachePressure
+      expr: mongodb_wt_cache_bytes_used / mongodb_wt_cache_bytes_max > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "MongoDB {{ $labels.node }} WiredTiger cache > 80%"
+    - alert: MongoDBNoPrimary
+      expr: absent(mongodb_topology_role == 1)
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "No primary detected in replica set"
+    - alert: MongoDBElectionStorm
+      expr: mongodb_topology_election_storm == 1
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Election storm on {{ $labels.node }}"
+    - alert: MongoDBReplicationLag
+      expr: mongodb_repl_lag_seconds > 10
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Replication lag {{ $value }}s on {{ $labels.member }}"
+    - alert: MongoDBOplogWindowLow
+      expr: mongodb_repl_oplog_window_hours < 12
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Oplog window {{ $value }}h on {{ $labels.node }}"
+
+resources:
+  limits:
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+dashboard:
+  enabled: false
