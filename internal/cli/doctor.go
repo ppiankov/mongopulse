@@ -11,6 +11,7 @@ import (
 
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/doctor"
+	"github.com/ppiankov/mongopulse/internal/sarif"
 )
 
 var doctorFormat string
@@ -22,7 +23,7 @@ var doctorCmd = &cobra.Command{
 }
 
 func init() {
-	doctorCmd.Flags().StringVar(&doctorFormat, "format", "text", "Output format: text or json")
+	doctorCmd.Flags().StringVar(&doctorFormat, "format", "text", "Output format: text, json, or sarif")
 	rootCmd.AddCommand(doctorCmd)
 }
 
@@ -44,6 +45,13 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
 			if err := enc.Encode(report); err != nil {
+				return err
+			}
+		case "sarif":
+			log := sarif.FromDoctorReport(report)
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(log); err != nil {
 				return err
 			}
 		default:

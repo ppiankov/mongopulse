@@ -17,6 +17,7 @@ import (
 	"github.com/ppiankov/mongopulse/internal/baseline"
 	"github.com/ppiankov/mongopulse/internal/config"
 	"github.com/ppiankov/mongopulse/internal/policy"
+	"github.com/ppiankov/mongopulse/internal/sarif"
 	"github.com/ppiankov/mongopulse/internal/snapshot"
 )
 
@@ -36,7 +37,7 @@ var statusCmd = &cobra.Command{
 }
 
 func init() {
-	statusCmd.Flags().StringVar(&statusFormat, "format", "text", "Output format: text or json")
+	statusCmd.Flags().StringVar(&statusFormat, "format", "text", "Output format: text, json, or sarif")
 	statusCmd.Flags().BoolVar(&statusUnhealthy, "unhealthy", false, "Only show unhealthy nodes")
 	statusCmd.Flags().StringVar(&statusPolicy, "policy", "", "Path to policy YAML file for policy-as-code enforcement")
 	statusCmd.Flags().StringVar(&statusBaseline, "baseline", "", "Path to baseline JSON file for suppressing known conditions")
@@ -114,6 +115,11 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(out)
+	case "sarif":
+		log := sarif.FromSnapshot(snaps, version)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(log)
 	default:
 		for _, s := range snaps {
 			printSnapshot(s)
